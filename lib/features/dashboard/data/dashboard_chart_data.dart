@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 import '../models/network_link.dart';
 import '../models/network_node.dart';
@@ -283,5 +284,20 @@ class DashboardChartData {
     '9p',
     '10p',
     '11p',
+  ];
+
+  static const List<FlSpot> areaChartSpots = [
+    FlSpot(0, 1.2),
+    FlSpot(1, 1.8),
+    FlSpot(2, 1.5),
+    FlSpot(3, 2.6),
+    FlSpot(4, 2.2),
+    FlSpot(5, 3.4),
+    FlSpot(6, 3.0),
+    FlSpot(7, 4.2),
+    FlSpot(8, 3.7),
+    FlSpot(9, 4.8),
+    FlSpot(10, 4.4),
+    FlSpot(11, 5.3),
   ];
 }

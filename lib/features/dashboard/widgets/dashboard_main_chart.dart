@@ -52,6 +52,7 @@ class DashboardMainChart extends StatelessWidget {
           onNodeTap: onNodeTap,
           onNodeDrag: onNodeDrag,
         ),
+        DashboardChartType.area => const _AreaChartView(),
         DashboardChartType.line => const _LineChartView(),
         DashboardChartType.bar => const _BarChartView(),
         DashboardChartType.pie => const _PieChartView(),
@@ -60,6 +61,69 @@ class DashboardMainChart extends StatelessWidget {
         DashboardChartType.scatter => const _ScatterPlotView(),
         DashboardChartType.bubble => const _BubbleChartView(),
       },
+    );
+  }
+}
+
+class _AreaChartView extends StatelessWidget {
+  const _AreaChartView();
+
+  @override
+  Widget build(BuildContext context) {
+    return LineChart(
+      LineChartData(
+        gridData: _gridData(),
+        titlesData: _titlesData(),
+        borderData: FlBorderData(
+          show: true,
+          border: Border.all(color: Colors.grey[700]!),
+        ),
+        minX: 0,
+        maxX: 11,
+        minY: 0,
+        maxY: 6,
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (_) => Colors.black87,
+            getTooltipItems: (spots) {
+              return spots.map((spot) {
+                return LineTooltipItem(
+                  'M${spot.x.toInt() + 1}: ${spot.y.toStringAsFixed(1)}',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
+                );
+              }).toList();
+            },
+          ),
+        ),
+        lineBarsData: [
+          LineChartBarData(
+            spots: DashboardChartData.areaChartSpots,
+            isCurved: true,
+            curveSmoothness: 0.35,
+            gradient: const LinearGradient(
+              colors: [Color(0xFF22C55E), Color(0xFF06B6D4)],
+            ),
+            barWidth: 4,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  const Color(0xFF22C55E).withValues(alpha: 0.45),
+                  const Color(0xFF06B6D4).withValues(alpha: 0.22),
+                  const Color(0xFF0F172A).withValues(alpha: 0.02),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

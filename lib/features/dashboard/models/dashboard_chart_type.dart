@@ -1,5 +1,6 @@
 enum DashboardChartType {
   network('Network Chart'),
+  area('Area Chart'),
   line('Line Chart'),
   bar('Bar Chart'),
   pie('Pie Chart'),
