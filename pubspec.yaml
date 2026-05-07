@@ -93,19 +93,21 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/icons/launcher_icon_source.png
+  image_path: assets/icon/app_icon.png
   min_sdk_android: 21
   remove_alpha_ios: true
-  background_color_ios: "#E2E2E6"
+  background_color_ios: "#667EEA"
+  adaptive_icon_background: "#667EEA"
+  adaptive_icon_foreground: assets/icon/app_icon_adaptive.png
   web:
     generate: true
-    image_path: assets/icons/launcher_icon_source.png
-    background_color: "#E2E2E6"
-    theme_color: "#7B43E3"
+    image_path: assets/icon/app_icon.png
+    background_color: "#667EEA"
+    theme_color: "#667EEA"
   windows:
     generate: true
-    image_path: assets/icons/launcher_icon_source.png
+    image_path: assets/icon/app_icon.png
     icon_size: 48
   macos:
     generate: true
-    image_path: assets/icons/launcher_icon_source.png
+    image_path: assets/icon/app_icon.png
