@@ -27,11 +27,6 @@
   <circle cx="600" cy="400" r="16" fill="#764BA2"/>
   <circle cx="700" cy="450" r="16" fill="#764BA2"/>
   
-  <!-- AI text with shadow -->
-  <text x="512" y="720" font-family="Arial, sans-serif" font-size="140" font-weight="bold" fill="white" text-anchor="middle" filter="url(#shadow)">
-    AI
-  </text>
-  
   <!-- Decorative elements -->
   <circle cx="250" cy="250" r="20" fill="white" opacity="0.6"/>
   <circle cx="750" cy="250" r="15" fill="white" opacity="0.4"/>
