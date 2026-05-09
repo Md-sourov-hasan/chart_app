@@ -8,7 +8,7 @@ import '../models/network_link.dart';
 import '../models/network_node.dart';
 import 'network_chart_view.dart';
 
-class DashboardMainChart extends StatelessWidget {
+class DashboardMainChart extends StatefulWidget {
   const DashboardMainChart({
     super.key,
     required this.selectedChartType,
@@ -31,9 +31,38 @@ class DashboardMainChart extends StatelessWidget {
   final void Function(NetworkNode, DragUpdateDetails, Size) onNodeDrag;
 
   @override
+  State<DashboardMainChart> createState() => _DashboardMainChartState();
+}
+
+class _DashboardMainChartState extends State<DashboardMainChart> {
+  int _slideDirection = 1;
+  int _switchVersion = 0;
+
+  @override
+  void didUpdateWidget(covariant DashboardMainChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedChartType != widget.selectedChartType) {
+      _slideDirection =
+          widget.selectedChartType.index >= oldWidget.selectedChartType.index
+          ? 1
+          : -1;
+      _switchVersion++;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      height: selectedChartType == DashboardChartType.network ? 360 : 300,
+    final chartContent = KeyedSubtree(
+      key: ValueKey('${widget.selectedChartType.name}-$_switchVersion'),
+      child: _buildSelectedChart(),
+    );
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 320),
+      curve: Curves.easeOutCubic,
+      height: widget.selectedChartType == DashboardChartType.network
+          ? 360
+          : 300,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.grey[900],
@@ -46,27 +75,118 @@ class DashboardMainChart extends StatelessWidget {
           ),
         ],
       ),
-      child: switch (selectedChartType) {
-        DashboardChartType.network => NetworkChartView(
-          nodes: networkNodes,
-          links: networkLinks,
-          activeNodeId: activeNodeId,
-          onReset: onResetNetwork,
-          onNodeTap: onNodeTap,
-          onNodeDrag: onNodeDrag,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 680),
+          reverseDuration: const Duration(milliseconds: 260),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          transitionBuilder: (child, animation) {
+            return _ChartOpenTransition(
+              animation: animation,
+              slideDirection: _slideDirection,
+              child: child,
+            );
+          },
+          child: chartContent,
         ),
-        DashboardChartType.area => _AreaChartView(spots: liveData.areaSpots),
-        DashboardChartType.line => _LineChartView(spots: liveData.lineSpots),
-        DashboardChartType.bar => _BarChartView(values: liveData.barValues),
-        DashboardChartType.pie => _PieChartView(values: liveData.pieValues),
-        DashboardChartType.radar => _RadarChartView(sets: liveData.radarSets),
-        DashboardChartType.heatMap => _HeatMapView(data: liveData.heatMapData),
-        DashboardChartType.scatter => _ScatterPlotView(
-          spots: liveData.scatterSpots,
-        ),
-        DashboardChartType.bubble => _BubbleChartView(
-          values: liveData.bubbleValues,
-        ),
+      ),
+    );
+  }
+
+  Widget _buildSelectedChart() {
+    return switch (widget.selectedChartType) {
+      DashboardChartType.network => NetworkChartView(
+        nodes: widget.networkNodes,
+        links: widget.networkLinks,
+        activeNodeId: widget.activeNodeId,
+        onReset: widget.onResetNetwork,
+        onNodeTap: widget.onNodeTap,
+        onNodeDrag: widget.onNodeDrag,
+      ),
+      DashboardChartType.area => _AreaChartView(
+        spots: widget.liveData.areaSpots,
+      ),
+      DashboardChartType.line => _LineChartView(
+        spots: widget.liveData.lineSpots,
+      ),
+      DashboardChartType.bar => _BarChartView(
+        values: widget.liveData.barValues,
+      ),
+      DashboardChartType.pie => _PieChartView(
+        values: widget.liveData.pieValues,
+      ),
+      DashboardChartType.radar => _RadarChartView(
+        sets: widget.liveData.radarSets,
+      ),
+      DashboardChartType.heatMap => _HeatMapView(
+        data: widget.liveData.heatMapData,
+      ),
+      DashboardChartType.scatter => _ScatterPlotView(
+        spots: widget.liveData.scatterSpots,
+      ),
+      DashboardChartType.bubble => _BubbleChartView(
+        values: widget.liveData.bubbleValues,
+      ),
+    };
+  }
+}
+
+class _ChartOpenTransition extends StatelessWidget {
+  const _ChartOpenTransition({
+    required this.animation,
+    required this.slideDirection,
+    required this.child,
+  });
+
+  final Animation<double> animation;
+  final int slideDirection;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final opacity = CurvedAnimation(
+      parent: animation,
+      curve: const Interval(0.05, 0.75, curve: Curves.easeOut),
+      reverseCurve: Curves.easeIn,
+    );
+    final reveal = CurvedAnimation(
+      parent: animation,
+      curve: const Interval(0, 0.85, curve: Curves.easeOutCubic),
+      reverseCurve: Curves.easeInCubic,
+    );
+    final settle = CurvedAnimation(
+      parent: animation,
+      curve: Curves.easeOutBack,
+      reverseCurve: Curves.easeInCubic,
+    );
+
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (context, child) {
+        final slideX = (1 - reveal.value) * 26 * slideDirection;
+        final slideY = (1 - reveal.value) * 18;
+        final scale = 0.92 + (0.08 * settle.value);
+        final tilt = (1 - reveal.value) * 0.012 * slideDirection;
+
+        return Opacity(
+          opacity: opacity.value,
+          child: ClipRect(
+            child: Align(
+              heightFactor: reveal.value.clamp(0.001, 1.0),
+              alignment: Alignment.topCenter,
+              child: Transform.translate(
+                offset: Offset(slideX, slideY),
+                child: Transform.rotate(
+                  angle: tilt,
+                  child: Transform.scale(scale: scale, child: child),
+                ),
+              ),
+            ),
+          ),
+        );
       },
     );
   }
