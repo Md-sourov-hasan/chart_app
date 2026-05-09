@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../data/dashboard_chart_data.dart';
 import '../models/dashboard_chart_type.dart';
+import '../models/dashboard_live_data.dart';
 import '../models/network_link.dart';
 import '../models/network_node.dart';
 import 'network_chart_view.dart';
@@ -11,6 +12,7 @@ class DashboardMainChart extends StatelessWidget {
   const DashboardMainChart({
     super.key,
     required this.selectedChartType,
+    required this.liveData,
     required this.networkNodes,
     required this.networkLinks,
     required this.activeNodeId,
@@ -20,6 +22,7 @@ class DashboardMainChart extends StatelessWidget {
   });
 
   final DashboardChartType selectedChartType;
+  final DashboardLiveData liveData;
   final List<NetworkNode> networkNodes;
   final List<NetworkLink> networkLinks;
   final int? activeNodeId;
@@ -52,21 +55,27 @@ class DashboardMainChart extends StatelessWidget {
           onNodeTap: onNodeTap,
           onNodeDrag: onNodeDrag,
         ),
-        DashboardChartType.area => const _AreaChartView(),
-        DashboardChartType.line => const _LineChartView(),
-        DashboardChartType.bar => const _BarChartView(),
-        DashboardChartType.pie => const _PieChartView(),
-        DashboardChartType.radar => const _RadarChartView(),
-        DashboardChartType.heatMap => const _HeatMapView(),
-        DashboardChartType.scatter => const _ScatterPlotView(),
-        DashboardChartType.bubble => const _BubbleChartView(),
+        DashboardChartType.area => _AreaChartView(spots: liveData.areaSpots),
+        DashboardChartType.line => _LineChartView(spots: liveData.lineSpots),
+        DashboardChartType.bar => _BarChartView(values: liveData.barValues),
+        DashboardChartType.pie => _PieChartView(values: liveData.pieValues),
+        DashboardChartType.radar => _RadarChartView(sets: liveData.radarSets),
+        DashboardChartType.heatMap => _HeatMapView(data: liveData.heatMapData),
+        DashboardChartType.scatter => _ScatterPlotView(
+          spots: liveData.scatterSpots,
+        ),
+        DashboardChartType.bubble => _BubbleChartView(
+          values: liveData.bubbleValues,
+        ),
       },
     );
   }
 }
 
 class _AreaChartView extends StatelessWidget {
-  const _AreaChartView();
+  const _AreaChartView({required this.spots});
+
+  final List<FlSpot> spots;
 
   @override
   Widget build(BuildContext context) {
@@ -100,7 +109,7 @@ class _AreaChartView extends StatelessWidget {
         ),
         lineBarsData: [
           LineChartBarData(
-            spots: DashboardChartData.areaChartSpots,
+            spots: spots,
             isCurved: true,
             curveSmoothness: 0.35,
             gradient: const LinearGradient(
@@ -129,7 +138,9 @@ class _AreaChartView extends StatelessWidget {
 }
 
 class _LineChartView extends StatelessWidget {
-  const _LineChartView();
+  const _LineChartView({required this.spots});
+
+  final List<FlSpot> spots;
 
   @override
   Widget build(BuildContext context) {
@@ -147,20 +158,7 @@ class _LineChartView extends StatelessWidget {
         maxY: 6,
         lineBarsData: [
           LineChartBarData(
-            spots: const [
-              FlSpot(0, 3),
-              FlSpot(1, 2.5),
-              FlSpot(2, 4),
-              FlSpot(3, 3.5),
-              FlSpot(4, 5),
-              FlSpot(5, 4.5),
-              FlSpot(6, 6),
-              FlSpot(7, 5.5),
-              FlSpot(8, 4),
-              FlSpot(9, 5),
-              FlSpot(10, 5.5),
-              FlSpot(11, 6),
-            ],
+            spots: spots,
             isCurved: true,
             gradient: LinearGradient(
               colors: [
@@ -200,7 +198,9 @@ class _LineChartView extends StatelessWidget {
 }
 
 class _BarChartView extends StatelessWidget {
-  const _BarChartView();
+  const _BarChartView({required this.values});
+
+  final List<DashboardBarValue> values;
 
   @override
   Widget build(BuildContext context) {
@@ -230,13 +230,9 @@ class _BarChartView extends StatelessWidget {
           ),
         ),
         barGroups: [
-          _buildBarGroup(0, 3, Colors.blue),
-          _buildBarGroup(1, 2.5, Colors.green),
-          _buildBarGroup(2, 4, Colors.orange),
-          _buildBarGroup(3, 3.5, Colors.red),
-          _buildBarGroup(4, 5, Colors.purple),
-          _buildBarGroup(5, 4.5, Colors.teal),
-          _buildBarGroup(6, 6, Colors.pink),
+          ...values.map(
+            (value) => _buildBarGroup(value.x, value.y, value.color),
+          ),
         ],
       ),
     );
@@ -263,7 +259,9 @@ class _BarChartView extends StatelessWidget {
 }
 
 class _PieChartView extends StatelessWidget {
-  const _PieChartView();
+  const _PieChartView({required this.values});
+
+  final List<DashboardPieValue> values;
 
   @override
   Widget build(BuildContext context) {
@@ -273,13 +271,9 @@ class _PieChartView extends StatelessWidget {
         borderData: FlBorderData(show: false),
         sectionsSpace: 2,
         centerSpaceRadius: 60,
-        sections: [
-          _section(Colors.blue, 30),
-          _section(Colors.green, 25),
-          _section(Colors.orange, 20),
-          _section(Colors.red, 15),
-          _section(Colors.purple, 10),
-        ],
+        sections: values
+            .map((value) => _section(value.color, value.value))
+            .toList(),
       ),
     );
   }
@@ -300,7 +294,9 @@ class _PieChartView extends StatelessWidget {
 }
 
 class _RadarChartView extends StatelessWidget {
-  const _RadarChartView();
+  const _RadarChartView({required this.sets});
+
+  final List<List<double>> sets;
 
   @override
   Widget build(BuildContext context) {
@@ -311,25 +307,17 @@ class _RadarChartView extends StatelessWidget {
             fillColor: Colors.blue.withValues(alpha: 0.3),
             borderColor: Colors.blue,
             entryRadius: 3,
-            dataEntries: const [
-              RadarEntry(value: 4),
-              RadarEntry(value: 5),
-              RadarEntry(value: 3),
-              RadarEntry(value: 4.5),
-              RadarEntry(value: 3.5),
-            ],
+            dataEntries: sets.first
+                .map((value) => RadarEntry(value: value))
+                .toList(),
           ),
           RadarDataSet(
             fillColor: Colors.red.withValues(alpha: 0.3),
             borderColor: Colors.red,
             entryRadius: 3,
-            dataEntries: const [
-              RadarEntry(value: 3),
-              RadarEntry(value: 4),
-              RadarEntry(value: 5),
-              RadarEntry(value: 3.5),
-              RadarEntry(value: 4.5),
-            ],
+            dataEntries: sets.last
+                .map((value) => RadarEntry(value: value))
+                .toList(),
           ),
         ],
         radarShape: RadarShape.polygon,
@@ -351,7 +339,9 @@ class _RadarChartView extends StatelessWidget {
 }
 
 class _HeatMapView extends StatelessWidget {
-  const _HeatMapView();
+  const _HeatMapView({required this.data});
+
+  final List<List<double>> data;
 
   @override
   Widget build(BuildContext context) {
@@ -392,7 +382,7 @@ class _HeatMapView extends StatelessWidget {
               ),
               Expanded(
                 child: Column(
-                  children: DashboardChartData.heatMapData.map((dayData) {
+                  children: data.map((dayData) {
                     return Expanded(
                       child: Row(
                         children: dayData.map((value) {
@@ -471,7 +461,9 @@ class _HeatMapView extends StatelessWidget {
 }
 
 class _ScatterPlotView extends StatelessWidget {
-  const _ScatterPlotView();
+  const _ScatterPlotView({required this.spots});
+
+  final List<FlSpot> spots;
 
   @override
   Widget build(BuildContext context) {
@@ -489,20 +481,7 @@ class _ScatterPlotView extends StatelessWidget {
         maxY: 6,
         lineBarsData: [
           LineChartBarData(
-            spots: const [
-              FlSpot(0, 2.5),
-              FlSpot(1, 3.2),
-              FlSpot(2, 1.8),
-              FlSpot(3, 4.1),
-              FlSpot(4, 2.9),
-              FlSpot(5, 5.2),
-              FlSpot(6, 3.8),
-              FlSpot(7, 4.5),
-              FlSpot(8, 2.1),
-              FlSpot(9, 3.7),
-              FlSpot(10, 4.8),
-              FlSpot(11, 5.5),
-            ],
+            spots: spots,
             isCurved: false,
             color: Colors.transparent,
             barWidth: 0,
@@ -525,7 +504,9 @@ class _ScatterPlotView extends StatelessWidget {
 }
 
 class _BubbleChartView extends StatelessWidget {
-  const _BubbleChartView();
+  const _BubbleChartView({required this.values});
+
+  final List<DashboardBubbleValue> values;
 
   @override
   Widget build(BuildContext context) {
@@ -549,12 +530,9 @@ class _BubbleChartView extends StatelessWidget {
           ),
         ),
         barGroups: [
-          _bubbleGroup(0, 2.5, Colors.blue, 30),
-          _bubbleGroup(1, 4.2, Colors.green, 40),
-          _bubbleGroup(2, 3.1, Colors.orange, 25),
-          _bubbleGroup(3, 5.8, Colors.red, 50),
-          _bubbleGroup(4, 2.9, Colors.purple, 35),
-          _bubbleGroup(5, 4.5, Colors.teal, 45),
+          ...values.map(
+            (value) => _bubbleGroup(value.x, value.y, value.color, value.width),
+          ),
         ],
       ),
     );

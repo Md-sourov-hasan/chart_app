@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../data/dashboard_chart_data.dart';
 import '../models/dashboard_chart_type.dart';
+import '../models/dashboard_live_data.dart';
 import '../models/network_node.dart';
 import '../widgets/chart_selector.dart';
 import '../widgets/dashboard_main_chart.dart';
@@ -18,10 +21,27 @@ class ChartsDashboardScreen extends StatefulWidget {
 class _ChartsDashboardScreenState extends State<ChartsDashboardScreen> {
   DashboardChartType _selectedChartType = DashboardChartType.network;
   int? _activeNodeId = 2;
+  late final Timer _liveDataTimer;
+  late DashboardLiveData _dashboardData;
 
   late final List<NetworkNode> _initialNetworkNodes =
       DashboardChartData.initialNetworkNodes();
   late List<NetworkNode> _networkNodes = _cloneNodes(_initialNetworkNodes);
+
+  @override
+  void initState() {
+    super.initState();
+    _dashboardData = DashboardChartData.generateLiveData();
+    _liveDataTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _dashboardData = DashboardChartData.generateLiveData();
+      });
+    });
+  }
 
   static List<NetworkNode> _cloneNodes(List<NetworkNode> nodes) {
     return nodes.map((node) => node.copyWith()).toList();
@@ -43,6 +63,20 @@ class _ChartsDashboardScreenState extends State<ChartsDashboardScreen> {
   void _selectNode(int nodeId) {
     setState(() {
       _activeNodeId = nodeId;
+    });
+  }
+
+  void _refreshCharts() {
+    setState(() {
+      _dashboardData = DashboardChartData.generateLiveData();
+    });
+  }
+
+  void _resetNetworkAndRefreshCharts() {
+    setState(() {
+      _networkNodes = _cloneNodes(_initialNetworkNodes);
+      _activeNodeId = 2;
+      _dashboardData = DashboardChartData.generateLiveData();
     });
   }
 
@@ -72,6 +106,12 @@ class _ChartsDashboardScreenState extends State<ChartsDashboardScreen> {
   }
 
   @override
+  void dispose() {
+    _liveDataTimer.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
@@ -82,8 +122,8 @@ class _ChartsDashboardScreenState extends State<ChartsDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _selectedChartType == DashboardChartType.network
-                ? _resetNetworkLayout
-                : () => setState(() {}),
+                ? _resetNetworkAndRefreshCharts
+                : _refreshCharts,
           ),
         ],
       ),
@@ -99,6 +139,7 @@ class _ChartsDashboardScreenState extends State<ChartsDashboardScreen> {
             const SizedBox(height: 20),
             DashboardMainChart(
               selectedChartType: _selectedChartType,
+              liveData: _dashboardData,
               networkNodes: _networkNodes,
               networkLinks: DashboardChartData.networkLinks,
               activeNodeId: _activeNodeId,
@@ -107,9 +148,9 @@ class _ChartsDashboardScreenState extends State<ChartsDashboardScreen> {
               onNodeDrag: _updateNodePosition,
             ),
             const SizedBox(height: 20),
-            const StatsCardsSection(),
+            StatsCardsSection(cards: _dashboardData.stats),
             const SizedBox(height: 20),
-            const SecondaryChartsSection(),
+            SecondaryChartsSection(liveData: _dashboardData),
           ],
         ),
       ),

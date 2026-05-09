@@ -1,16 +1,28 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
+import '../models/dashboard_live_data.dart';
+
 class SecondaryChartsSection extends StatelessWidget {
-  const SecondaryChartsSection({super.key});
+  const SecondaryChartsSection({super.key, required this.liveData});
+
+  final DashboardLiveData liveData;
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
-        Expanded(child: _SecondaryChartCard(child: _MiniLineChart())),
-        SizedBox(width: 12),
-        Expanded(child: _SecondaryChartCard(child: _MiniBarChart())),
+        Expanded(
+          child: _SecondaryChartCard(
+            child: _MiniLineChart(spots: liveData.miniLineSpots),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SecondaryChartCard(
+            child: _MiniBarChart(values: liveData.miniBarValues),
+          ),
+        ),
       ],
     );
   }
@@ -36,7 +48,9 @@ class _SecondaryChartCard extends StatelessWidget {
 }
 
 class _MiniLineChart extends StatelessWidget {
-  const _MiniLineChart();
+  const _MiniLineChart({required this.spots});
+
+  final List<FlSpot> spots;
 
   @override
   Widget build(BuildContext context) {
@@ -51,16 +65,7 @@ class _MiniLineChart extends StatelessWidget {
         maxY: 4,
         lineBarsData: [
           LineChartBarData(
-            spots: const [
-              FlSpot(0, 1),
-              FlSpot(1, 1.5),
-              FlSpot(2, 2),
-              FlSpot(3, 1.8),
-              FlSpot(4, 2.5),
-              FlSpot(5, 3),
-              FlSpot(6, 3.5),
-              FlSpot(7, 4),
-            ],
+            spots: spots,
             isCurved: true,
             color: Colors.green,
             barWidth: 3,
@@ -78,7 +83,9 @@ class _MiniLineChart extends StatelessWidget {
 }
 
 class _MiniBarChart extends StatelessWidget {
-  const _MiniBarChart();
+  const _MiniBarChart({required this.values});
+
+  final List<DashboardBarValue> values;
 
   @override
   Widget build(BuildContext context) {
@@ -87,13 +94,9 @@ class _MiniBarChart extends StatelessWidget {
         gridData: const FlGridData(show: false),
         titlesData: const FlTitlesData(show: false),
         borderData: FlBorderData(show: false),
-        barGroups: [
-          _buildBarGroup(0, 2),
-          _buildBarGroup(1, 3),
-          _buildBarGroup(2, 1.5),
-          _buildBarGroup(3, 2.5),
-          _buildBarGroup(4, 3.5),
-        ],
+        barGroups: values
+            .map((value) => _buildBarGroup(value.x, value.y))
+            .toList(),
       ),
     );
   }

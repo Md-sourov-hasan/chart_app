@@ -1,44 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../models/dashboard_live_data.dart';
+
 class StatsCardsSection extends StatelessWidget {
-  const StatsCardsSection({super.key});
+  const StatsCardsSection({super.key, required this.cards});
+
+  final List<DashboardStatCardData> cards;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      children: const [
-        Expanded(
-          child: _StatCard(
-            card: _StatCardData(
-              title: 'Total Revenue',
-              value: '\$12,345',
-              color: Colors.green,
-              icon: Icons.trending_up,
-            ),
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            card: _StatCardData(
-              title: 'Active Users',
-              value: '1,234',
-              color: Colors.blue,
-              icon: Icons.people,
-            ),
-          ),
-        ),
-        SizedBox(width: 12),
-        Expanded(
-          child: _StatCard(
-            card: _StatCardData(
-              title: 'Growth Rate',
-              value: '+23%',
-              color: Colors.orange,
-              icon: Icons.show_chart,
-            ),
-          ),
-        ),
+      children: [
+        for (var index = 0; index < cards.length; index++) ...[
+          Expanded(child: _StatCard(card: cards[index])),
+          if (index != cards.length - 1) const SizedBox(width: 12),
+        ],
       ],
     );
   }
@@ -47,7 +23,7 @@ class StatsCardsSection extends StatelessWidget {
 class _StatCard extends StatelessWidget {
   const _StatCard({required this.card});
 
-  final _StatCardData card;
+  final DashboardStatCardData card;
 
   @override
   Widget build(BuildContext context) {
@@ -88,18 +64,4 @@ class _StatCard extends StatelessWidget {
       ),
     );
   }
-}
-
-class _StatCardData {
-  const _StatCardData({
-    required this.title,
-    required this.value,
-    required this.color,
-    required this.icon,
-  });
-
-  final String title;
-  final String value;
-  final Color color;
-  final IconData icon;
 }
