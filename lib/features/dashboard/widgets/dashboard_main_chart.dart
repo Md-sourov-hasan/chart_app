@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -7,6 +9,9 @@ import '../models/dashboard_live_data.dart';
 import '../models/network_link.dart';
 import '../models/network_node.dart';
 import 'network_chart_view.dart';
+
+const _chartEntryDuration = Duration(milliseconds: 1450);
+const _chartEntryCurve = Curves.easeOutCubic;
 
 class DashboardMainChart extends StatefulWidget {
   const DashboardMainChart({
@@ -58,8 +63,8 @@ class _DashboardMainChartState extends State<DashboardMainChart> {
     );
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 320),
-      curve: Curves.easeOutCubic,
+      duration: const Duration(milliseconds: 460),
+      curve: Curves.easeOutExpo,
       height: widget.selectedChartType == DashboardChartType.network
           ? 360
           : 300,
@@ -78,9 +83,9 @@ class _DashboardMainChartState extends State<DashboardMainChart> {
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 680),
-          reverseDuration: const Duration(milliseconds: 260),
-          switchInCurve: Curves.easeOutCubic,
+          duration: const Duration(milliseconds: 820),
+          reverseDuration: const Duration(milliseconds: 320),
+          switchInCurve: Curves.easeOutExpo,
           switchOutCurve: Curves.easeInCubic,
           transitionBuilder: (child, animation) {
             return _ChartOpenTransition(
@@ -148,12 +153,12 @@ class _ChartOpenTransition extends StatelessWidget {
   Widget build(BuildContext context) {
     final opacity = CurvedAnimation(
       parent: animation,
-      curve: const Interval(0.05, 0.75, curve: Curves.easeOut),
+      curve: const Interval(0.06, 0.72, curve: Curves.easeOut),
       reverseCurve: Curves.easeIn,
     );
     final reveal = CurvedAnimation(
       parent: animation,
-      curve: const Interval(0, 0.85, curve: Curves.easeOutCubic),
+      curve: const Interval(0, 0.88, curve: Curves.easeOutExpo),
       reverseCurve: Curves.easeInCubic,
     );
     final settle = CurvedAnimation(
@@ -161,15 +166,22 @@ class _ChartOpenTransition extends StatelessWidget {
       curve: Curves.easeOutBack,
       reverseCurve: Curves.easeInCubic,
     );
+    final focus = CurvedAnimation(
+      parent: animation,
+      curve: const Interval(0.18, 1, curve: Curves.easeOutCubic),
+      reverseCurve: Curves.easeInCubic,
+    );
 
     return AnimatedBuilder(
       animation: animation,
       child: child,
       builder: (context, child) {
-        final slideX = (1 - reveal.value) * 26 * slideDirection;
-        final slideY = (1 - reveal.value) * 18;
-        final scale = 0.92 + (0.08 * settle.value);
-        final tilt = (1 - reveal.value) * 0.012 * slideDirection;
+        final entrance = 1 - reveal.value;
+        final slideX = entrance * 42 * slideDirection;
+        final slideY = entrance * 22;
+        final scale = 0.90 + (0.10 * settle.value);
+        final tilt = entrance * 0.035 * slideDirection;
+        final blur = (1 - focus.value) * 7;
 
         return Opacity(
           opacity: opacity.value,
@@ -177,11 +189,17 @@ class _ChartOpenTransition extends StatelessWidget {
             child: Align(
               heightFactor: reveal.value.clamp(0.001, 1.0),
               alignment: Alignment.topCenter,
-              child: Transform.translate(
-                offset: Offset(slideX, slideY),
-                child: Transform.rotate(
-                  angle: tilt,
-                  child: Transform.scale(scale: scale, child: child),
+              child: ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(sigmaX: blur, sigmaY: blur),
+                child: Transform(
+                  alignment: Alignment.center,
+                  transform: Matrix4.identity()
+                    ..setEntry(3, 2, 0.0012)
+                    ..rotateY(tilt),
+                  child: Transform.translate(
+                    offset: Offset(slideX, slideY),
+                    child: Transform.scale(scale: scale, child: child),
+                  ),
                 ),
               ),
             ),
@@ -199,60 +217,69 @@ class _AreaChartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LineChart(
-      LineChartData(
-        gridData: _gridData(),
-        titlesData: _titlesData(),
-        borderData: FlBorderData(
-          show: true,
-          border: Border.all(color: Colors.grey[700]!),
-        ),
-        minX: 0,
-        maxX: 11,
-        minY: 0,
-        maxY: 6,
-        lineTouchData: LineTouchData(
-          touchTooltipData: LineTouchTooltipData(
-            getTooltipColor: (_) => Colors.black87,
-            getTooltipItems: (spots) {
-              return spots.map((spot) {
-                return LineTooltipItem(
-                  'M${spot.x.toInt() + 1}: ${spot.y.toStringAsFixed(1)}',
-                  const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                  ),
-                );
-              }).toList();
-            },
-          ),
-        ),
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            curveSmoothness: 0.35,
-            gradient: const LinearGradient(
-              colors: [Color(0xFF22C55E), Color(0xFF06B6D4)],
-            ),
-            barWidth: 4,
-            isStrokeCapRound: true,
-            dotData: const FlDotData(show: false),
-            belowBarData: BarAreaData(
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _chartEntryDuration,
+      curve: _chartEntryCurve,
+      builder: (context, progress, _) {
+        return LineChart(
+          LineChartData(
+            gridData: _gridData(),
+            titlesData: _titlesData(),
+            borderData: FlBorderData(
               show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  const Color(0xFF22C55E).withValues(alpha: 0.45),
-                  const Color(0xFF06B6D4).withValues(alpha: 0.22),
-                  const Color(0xFF0F172A).withValues(alpha: 0.02),
-                ],
+              border: Border.all(color: Colors.grey[700]!),
+            ),
+            minX: 0,
+            maxX: 11,
+            minY: 0,
+            maxY: 6,
+            lineTouchData: LineTouchData(
+              touchTooltipData: LineTouchTooltipData(
+                getTooltipColor: (_) => Colors.black87,
+                getTooltipItems: (spots) {
+                  return spots.map((spot) {
+                    return LineTooltipItem(
+                      'M${spot.x.toInt() + 1}: ${spot.y.toStringAsFixed(1)}',
+                      const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    );
+                  }).toList();
+                },
               ),
             ),
+            lineBarsData: [
+              LineChartBarData(
+                spots: _scaledSpots(spots, progress),
+                isCurved: true,
+                curveSmoothness: 0.35,
+                gradient: const LinearGradient(
+                  colors: [Color(0xFF22C55E), Color(0xFF06B6D4)],
+                ),
+                barWidth: 4,
+                isStrokeCapRound: true,
+                dotData: const FlDotData(show: false),
+                belowBarData: BarAreaData(
+                  show: true,
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0xFF22C55E).withValues(alpha: 0.45),
+                      const Color(0xFF06B6D4).withValues(alpha: 0.22),
+                      const Color(0xFF0F172A).withValues(alpha: 0.02),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+          duration: _chartEntryDuration,
+          curve: _chartEntryCurve,
+        );
+      },
     );
   }
 }
@@ -264,55 +291,64 @@ class _LineChartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LineChart(
-      LineChartData(
-        gridData: _gridData(),
-        titlesData: _titlesData(),
-        borderData: FlBorderData(
-          show: true,
-          border: Border.all(color: Colors.grey[700]!),
-        ),
-        minX: 0,
-        maxX: 11,
-        minY: 0,
-        maxY: 6,
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: true,
-            gradient: LinearGradient(
-              colors: [
-                Colors.blue.withValues(alpha: 0.8),
-                Colors.purple.withValues(alpha: 0.8),
-              ],
-            ),
-            barWidth: 5,
-            isStrokeCapRound: true,
-            dotData: FlDotData(
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _chartEntryDuration,
+      curve: _chartEntryCurve,
+      builder: (context, progress, _) {
+        return LineChart(
+          LineChartData(
+            gridData: _gridData(),
+            titlesData: _titlesData(),
+            borderData: FlBorderData(
               show: true,
-              getDotPainter: (spot, percent, barData, index) {
-                return FlDotCirclePainter(
-                  radius: 4,
-                  color: Colors.white,
-                  strokeWidth: 2,
-                  strokeColor: Colors.blue,
-                );
-              },
+              border: Border.all(color: Colors.grey[700]!),
             ),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                colors: [
-                  Colors.blue.withValues(alpha: 0.3),
-                  Colors.purple.withValues(alpha: 0.1),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
+            minX: 0,
+            maxX: 11,
+            minY: 0,
+            maxY: 6,
+            lineBarsData: [
+              LineChartBarData(
+                spots: _scaledSpots(spots, progress),
+                isCurved: true,
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.blue.withValues(alpha: 0.8),
+                    Colors.purple.withValues(alpha: 0.8),
+                  ],
+                ),
+                barWidth: 5,
+                isStrokeCapRound: true,
+                dotData: FlDotData(
+                  show: true,
+                  getDotPainter: (spot, percent, barData, index) {
+                    return FlDotCirclePainter(
+                      radius: 2 + (2 * progress),
+                      color: Colors.white,
+                      strokeWidth: 2,
+                      strokeColor: Colors.blue,
+                    );
+                  },
+                ),
+                belowBarData: BarAreaData(
+                  show: true,
+                  gradient: LinearGradient(
+                    colors: [
+                      Colors.blue.withValues(alpha: 0.3),
+                      Colors.purple.withValues(alpha: 0.1),
+                    ],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+          duration: _chartEntryDuration,
+          curve: _chartEntryCurve,
+        );
+      },
     );
   }
 }
@@ -324,37 +360,47 @@ class _BarChartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        titlesData: _titlesData(),
-        borderData: FlBorderData(show: false),
-        barTouchData: BarTouchData(
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipColor: (group) => Colors.blueGrey,
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              return BarTooltipItem(
-                '${group.x.toInt()}\n',
-                const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-                children: [
-                  TextSpan(
-                    text: '${rod.toY.round()}',
-                    style: const TextStyle(color: Colors.yellow),
-                  ),
-                ],
-              );
-            },
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _chartEntryDuration,
+      curve: _chartEntryCurve,
+      builder: (context, progress, _) {
+        return BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            titlesData: _titlesData(),
+            borderData: FlBorderData(show: false),
+            barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (group) => Colors.blueGrey,
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    '${group.x.toInt()}\n',
+                    const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    children: [
+                      TextSpan(
+                        text: '${rod.toY.round()}',
+                        style: const TextStyle(color: Colors.yellow),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            barGroups: [
+              ...values.map(
+                (value) =>
+                    _buildBarGroup(value.x, value.y * progress, value.color),
+              ),
+            ],
           ),
-        ),
-        barGroups: [
-          ...values.map(
-            (value) => _buildBarGroup(value.x, value.y, value.color),
-          ),
-        ],
-      ),
+          duration: _chartEntryDuration,
+          curve: _chartEntryCurve,
+        );
+      },
     );
   }
 
@@ -385,16 +431,27 @@ class _PieChartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PieChart(
-      PieChartData(
-        pieTouchData: PieTouchData(touchCallback: (event, pieTouchResponse) {}),
-        borderData: FlBorderData(show: false),
-        sectionsSpace: 2,
-        centerSpaceRadius: 60,
-        sections: values
-            .map((value) => _section(value.color, value.value))
-            .toList(),
-      ),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _chartEntryDuration,
+      curve: _chartEntryCurve,
+      builder: (context, progress, _) {
+        return PieChart(
+          PieChartData(
+            pieTouchData: PieTouchData(
+              touchCallback: (event, pieTouchResponse) {},
+            ),
+            borderData: FlBorderData(show: false),
+            sectionsSpace: 2,
+            centerSpaceRadius: 60,
+            sections: values
+                .map((value) => _section(value.color, value.value * progress))
+                .toList(),
+          ),
+          duration: _chartEntryDuration,
+          curve: _chartEntryCurve,
+        );
+      },
     );
   }
 
@@ -420,40 +477,49 @@ class _RadarChartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RadarChart(
-      RadarChartData(
-        dataSets: [
-          RadarDataSet(
-            fillColor: Colors.blue.withValues(alpha: 0.3),
-            borderColor: Colors.blue,
-            entryRadius: 3,
-            dataEntries: sets.first
-                .map((value) => RadarEntry(value: value))
-                .toList(),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _chartEntryDuration,
+      curve: _chartEntryCurve,
+      builder: (context, progress, _) {
+        return RadarChart(
+          RadarChartData(
+            dataSets: [
+              RadarDataSet(
+                fillColor: Colors.blue.withValues(alpha: 0.3),
+                borderColor: Colors.blue,
+                entryRadius: 3,
+                dataEntries: sets.first
+                    .map((value) => RadarEntry(value: value * progress))
+                    .toList(),
+              ),
+              RadarDataSet(
+                fillColor: Colors.red.withValues(alpha: 0.3),
+                borderColor: Colors.red,
+                entryRadius: 3,
+                dataEntries: sets.last
+                    .map((value) => RadarEntry(value: value * progress))
+                    .toList(),
+              ),
+            ],
+            radarShape: RadarShape.polygon,
+            radarBackgroundColor: Colors.transparent,
+            borderData: FlBorderData(show: false),
+            tickCount: 6,
+            ticksTextStyle: const TextStyle(color: Colors.white, fontSize: 10),
+            titleTextStyle: const TextStyle(color: Colors.white, fontSize: 12),
+            getTitle: (index, angle) {
+              const titles = ['Speed', 'Power', 'Defense', 'Attack', 'Health'];
+              if (index >= 0 && index < titles.length) {
+                return RadarChartTitle(text: titles[index], angle: angle);
+              }
+              return const RadarChartTitle(text: '');
+            },
           ),
-          RadarDataSet(
-            fillColor: Colors.red.withValues(alpha: 0.3),
-            borderColor: Colors.red,
-            entryRadius: 3,
-            dataEntries: sets.last
-                .map((value) => RadarEntry(value: value))
-                .toList(),
-          ),
-        ],
-        radarShape: RadarShape.polygon,
-        radarBackgroundColor: Colors.transparent,
-        borderData: FlBorderData(show: false),
-        tickCount: 6,
-        ticksTextStyle: const TextStyle(color: Colors.white, fontSize: 10),
-        titleTextStyle: const TextStyle(color: Colors.white, fontSize: 12),
-        getTitle: (index, angle) {
-          const titles = ['Speed', 'Power', 'Defense', 'Attack', 'Health'];
-          if (index >= 0 && index < titles.length) {
-            return RadarChartTitle(text: titles[index], angle: angle);
-          }
-          return const RadarChartTitle(text: '');
-        },
-      ),
+          duration: _chartEntryDuration,
+          curve: _chartEntryCurve,
+        );
+      },
     );
   }
 }
@@ -465,98 +531,108 @@ class _HeatMapView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 32),
-          child: Row(
-            children: DashboardChartData.heatMapHours.map((hour) {
-              return Expanded(
-                child: Text(
-                  hour,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey[400], fontSize: 8),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Expanded(
-          child: Row(
-            children: [
-              Column(
-                children: DashboardChartData.heatMapDays.map((day) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _chartEntryDuration,
+      curve: _chartEntryCurve,
+      builder: (context, progress, _) {
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.only(left: 32),
+              child: Row(
+                children: DashboardChartData.heatMapHours.map((hour) {
                   return Expanded(
-                    child: Container(
-                      height: 30,
-                      alignment: Alignment.centerRight,
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Text(
-                        day,
-                        style: TextStyle(color: Colors.grey[400], fontSize: 10),
-                      ),
+                    child: Text(
+                      hour,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey[400], fontSize: 8),
                     ),
                   );
                 }).toList(),
               ),
-              Expanded(
-                child: Column(
-                  children: data.map((dayData) {
-                    return Expanded(
-                      child: Row(
-                        children: dayData.map((value) {
-                          return Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.all(1),
-                              decoration: BoxDecoration(
-                                color: _heatMapColor(value),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: Row(
+                children: [
+                  Column(
+                    children: DashboardChartData.heatMapDays.map((day) {
+                      return Expanded(
+                        child: Container(
+                          height: 30,
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 8),
+                          child: Text(
+                            day,
+                            style: TextStyle(
+                              color: Colors.grey[400],
+                              fontSize: 10,
                             ),
-                          );
-                        }).toList(),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Less',
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              width: 100,
-              height: 12,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.grey[800]!,
-                    Colors.blue.withValues(alpha: 0.3),
-                    Colors.blue.withValues(alpha: 0.6),
-                    Colors.blue.withValues(alpha: 0.9),
-                    Colors.blue,
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  Expanded(
+                    child: Column(
+                      children: data.map((dayData) {
+                        return Expanded(
+                          child: Row(
+                            children: dayData.map((value) {
+                              return Expanded(
+                                child: Container(
+                                  margin: const EdgeInsets.all(1),
+                                  decoration: BoxDecoration(
+                                    color: _heatMapColor(value * progress),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(width: 8),
-            Text(
-              'More',
-              style: TextStyle(color: Colors.grey[400], fontSize: 12),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  'Less',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  width: 100,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.grey[800]!,
+                        Colors.blue.withValues(alpha: 0.3),
+                        Colors.blue.withValues(alpha: 0.6),
+                        Colors.blue.withValues(alpha: 0.9),
+                        Colors.blue,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'More',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 12),
+                ),
+              ],
             ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -587,38 +663,42 @@ class _ScatterPlotView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LineChart(
-      LineChartData(
-        gridData: _gridData(),
-        titlesData: _titlesData(),
-        borderData: FlBorderData(
-          show: true,
-          border: Border.all(color: Colors.grey[700]!),
-        ),
-        minX: 0,
-        maxX: 11,
-        minY: 0,
-        maxY: 6,
-        lineBarsData: [
-          LineChartBarData(
-            spots: spots,
-            isCurved: false,
-            color: Colors.transparent,
-            barWidth: 0,
-            dotData: FlDotData(
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _chartEntryDuration,
+      curve: _chartEntryCurve,
+      builder: (context, progress, _) {
+        return ScatterChart(
+          ScatterChartData(
+            gridData: _gridData(),
+            titlesData: _titlesData(),
+            borderData: FlBorderData(
               show: true,
-              getDotPainter: (spot, percent, barData, index) {
-                return FlDotCirclePainter(
-                  radius: 6,
-                  color: Colors.purple,
-                  strokeWidth: 2,
-                  strokeColor: Colors.white,
-                );
-              },
+              border: Border.all(color: Colors.grey[700]!),
             ),
+            minX: 0,
+            maxX: 11,
+            minY: 0,
+            maxY: 6,
+            scatterSpots: spots
+                .map(
+                  (spot) => ScatterSpot(
+                    spot.x,
+                    spot.y * progress,
+                    dotPainter: FlDotCirclePainter(
+                      radius: 2 + (4 * progress),
+                      color: Colors.purple,
+                      strokeWidth: 2,
+                      strokeColor: Colors.white,
+                    ),
+                  ),
+                )
+                .toList(),
           ),
-        ],
-      ),
+          duration: _chartEntryDuration,
+          curve: _chartEntryCurve,
+        );
+      },
     );
   }
 }
@@ -630,31 +710,45 @@ class _BubbleChartView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        titlesData: _titlesData(),
-        borderData: FlBorderData(show: false),
-        barTouchData: BarTouchData(
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipColor: (group) => Colors.blueGrey,
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              return BarTooltipItem(
-                'Value: ${rod.toY.round()}',
-                const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: _chartEntryDuration,
+      curve: _chartEntryCurve,
+      builder: (context, progress, _) {
+        return BarChart(
+          BarChartData(
+            alignment: BarChartAlignment.spaceAround,
+            titlesData: _titlesData(),
+            borderData: FlBorderData(show: false),
+            barTouchData: BarTouchData(
+              touchTooltipData: BarTouchTooltipData(
+                getTooltipColor: (group) => Colors.blueGrey,
+                getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                  return BarTooltipItem(
+                    'Value: ${rod.toY.round()}',
+                    const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  );
+                },
+              ),
+            ),
+            barGroups: [
+              ...values.map(
+                (value) => _bubbleGroup(
+                  value.x,
+                  value.y * progress,
+                  value.color,
+                  8 + ((value.width - 8) * progress),
                 ),
-              );
-            },
+              ),
+            ],
           ),
-        ),
-        barGroups: [
-          ...values.map(
-            (value) => _bubbleGroup(value.x, value.y, value.color, value.width),
-          ),
-        ],
-      ),
+          duration: _chartEntryDuration,
+          curve: _chartEntryCurve,
+        );
+      },
     );
   }
 
@@ -671,6 +765,12 @@ class _BubbleChartView extends StatelessWidget {
       ],
     );
   }
+}
+
+List<FlSpot> _scaledSpots(List<FlSpot> spots, double progress) {
+  return spots
+      .map((spot) => FlSpot(spot.x, spot.y * progress))
+      .toList(growable: false);
 }
 
 FlGridData _gridData() {
@@ -694,7 +794,7 @@ FlTitlesData _titlesData() {
     bottomTitles: AxisTitles(
       sideTitles: SideTitles(
         showTitles: true,
-        reservedSize: 30,
+        reservedSize: 34,
         interval: 1,
         getTitlesWidget: _bottomTitleWidgets,
       ),
@@ -703,7 +803,7 @@ FlTitlesData _titlesData() {
       sideTitles: SideTitles(
         showTitles: true,
         interval: 1,
-        reservedSize: 42,
+        reservedSize: 36,
         getTitlesWidget: _leftTitleWidgets,
       ),
     ),
@@ -714,7 +814,7 @@ Widget _bottomTitleWidgets(double value, TitleMeta meta) {
   const style = TextStyle(
     color: Colors.white,
     fontWeight: FontWeight.bold,
-    fontSize: 12,
+    fontSize: 10,
   );
 
   final text = switch (value.toInt()) {
@@ -727,14 +827,25 @@ Widget _bottomTitleWidgets(double value, TitleMeta meta) {
     _ => '',
   };
 
-  return Text(text, style: style);
+  return SideTitleWidget(
+    meta: meta,
+    space: 6,
+    fitInside: SideTitleFitInsideData.fromTitleMeta(meta, distanceFromEdge: 0),
+    child: SizedBox(
+      width: 26,
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(text, maxLines: 1, style: style),
+      ),
+    ),
+  );
 }
 
 Widget _leftTitleWidgets(double value, TitleMeta meta) {
   const style = TextStyle(
     color: Colors.white,
     fontWeight: FontWeight.bold,
-    fontSize: 12,
+    fontSize: 10,
   );
 
   final text = switch (value.toInt()) {
@@ -747,5 +858,19 @@ Widget _leftTitleWidgets(double value, TitleMeta meta) {
     _ => '',
   };
 
-  return Text(text, style: style);
+  return SideTitleWidget(
+    meta: meta,
+    space: 8,
+    fitInside: SideTitleFitInsideData.fromTitleMeta(meta, distanceFromEdge: 2),
+    child: SizedBox(
+      width: 28,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(text, maxLines: 1, style: style),
+        ),
+      ),
+    ),
+  );
 }

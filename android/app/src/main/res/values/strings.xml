@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">free_ai</string>
+    <string name="device_admin_disable_warning">Protection is active. If you disable this permission, the app can be uninstalled.</string>
+</resources>
