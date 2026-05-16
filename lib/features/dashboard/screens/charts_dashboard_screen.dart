@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../../app_protection/widgets/app_protection_card.dart';
 import '../data/dashboard_chart_data.dart';
 import '../models/dashboard_chart_type.dart';
 import '../models/dashboard_live_data.dart';
@@ -133,8 +132,6 @@ class _ChartsDashboardScreenState extends State<ChartsDashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AppProtectionCard(),
-            const SizedBox(height: 20),
             ChartSelector(
               selectedChartType: _selectedChartType,
               onSelected: _selectChart,
