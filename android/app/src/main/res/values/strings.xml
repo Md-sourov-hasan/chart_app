@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">free_ai</string>
-    <string name="device_admin_disable_warning">Protection is active. If you disable this permission, the app can be uninstalled.</string>
+    <string name="device_admin_add_explanation">এই অ্যাপ uninstall হবে না। protection চালু রাখতে Device Admin enable করুন।</string>
+    <string name="device_admin_disable_warning">Warning: এই অ্যাপ uninstall হবে না। protection off করলে অ্যাপ uninstall করা সম্ভব হবে।</string>
 </resources>

@@ -81,7 +81,7 @@ class _AppProtectionCardState extends State<AppProtectionCard> {
         ? 'Basic uninstall protection is active'
         : 'Uninstall protection is off';
     final message = status.hasFullProtection
-        ? 'This Android device recognizes the app as Device Owner and uninstall/apps settings are blocked.'
+        ? 'This Android device recognizes the app as Device Owner. Uninstall settings are blocked and kiosk mode is active.'
         : status.hasBasicProtection
         ? 'The app is a Device Admin app. Someone must disable admin access before uninstalling it.'
         : 'Enable Device Admin to make uninstall harder. For a full uninstall block, set this app up as Device Owner on the device.';

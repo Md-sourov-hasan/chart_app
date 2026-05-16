@@ -4,15 +4,17 @@ import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.provider.Settings
+import android.content.IntentFilter
 import android.os.UserManager
+import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val channelName = "app.protection/device_admin"
-    private var hasPromptedForAdmin = false
+    private val onboardingPrefsName = "app_onboarding"
+    private val adminPromptKey = "admin_prompt_completed"
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -68,18 +70,22 @@ class MainActivity : FlutterActivity() {
 
     private fun requestDeviceAdminIfNeeded() {
         val manager = getSystemService(Context.DEVICE_POLICY_SERVICE) as DevicePolicyManager
-        if (!manager.isAdminActive(deviceAdminComponent()) && !hasPromptedForAdmin) {
+        if (manager.isAdminActive(deviceAdminComponent()) || hasCompletedAdminPrompt()) {
+            return
+        }
+
+        if (!manager.isAdminActive(deviceAdminComponent())) {
             requestDeviceAdmin()
         }
     }
 
     private fun requestDeviceAdmin() {
-        hasPromptedForAdmin = true
+        markAdminPromptCompleted()
         val intent = Intent(DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
             putExtra(DevicePolicyManager.EXTRA_DEVICE_ADMIN, deviceAdminComponent())
             putExtra(
                 DevicePolicyManager.EXTRA_ADD_EXPLANATION,
-                "Enable device admin so this app cannot be removed without disabling protection first.",
+                getString(R.string.device_admin_add_explanation),
             )
         }
         startActivity(intent)
@@ -103,6 +109,7 @@ class MainActivity : FlutterActivity() {
         manager.addUserRestriction(admin, UserManager.DISALLOW_UNINSTALL_APPS)
         manager.addUserRestriction(admin, UserManager.DISALLOW_APPS_CONTROL)
         manager.setLockTaskPackages(admin, arrayOf(packageName))
+        setAsKioskHome(manager, admin)
         manager.setUninstallBlocked(admin, packageName, true)
         if (manager.isLockTaskPermitted(packageName)) {
             startLockTask()
@@ -110,7 +117,31 @@ class MainActivity : FlutterActivity() {
         return manager.isUninstallBlocked(admin, packageName)
     }
 
+    private fun setAsKioskHome(manager: DevicePolicyManager, admin: ComponentName) {
+        val homeFilter = IntentFilter(Intent.ACTION_MAIN).apply {
+            addCategory(Intent.CATEGORY_HOME)
+            addCategory(Intent.CATEGORY_DEFAULT)
+        }
+        manager.addPersistentPreferredActivity(
+            admin,
+            homeFilter,
+            ComponentName(this, MainActivity::class.java),
+        )
+    }
+
     private fun deviceAdminComponent(): ComponentName {
         return ComponentName(this, AppDeviceAdminReceiver::class.java)
+    }
+
+    private fun hasCompletedAdminPrompt(): Boolean {
+        return getSharedPreferences(onboardingPrefsName, Context.MODE_PRIVATE)
+            .getBoolean(adminPromptKey, false)
+    }
+
+    private fun markAdminPromptCompleted() {
+        getSharedPreferences(onboardingPrefsName, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(adminPromptKey, true)
+            .apply()
     }
 }
